@@ -154,6 +154,36 @@ def lanzar_bounty(bounty: BountyCreate):
         "reward": f"${bounty.reward_amount} USD"
     }
 
+@app.get("/bounties/{bounty_id}")
+def obtener_detalles_bounty(bounty_id: str):
+    # Conectamos con Postgres y buscamos el contrato
+    try:
+        db._ensure_pg_connection()
+        cursor = db.pg_conn.cursor()
+        
+        # Traemos el título, descripción y el dinero
+        cursor.execute("""
+            SELECT title, description, reward_amount, status 
+            FROM Bounties 
+            WHERE bounty_id = %s;
+        """, (bounty_id,))
+        
+        bounty = cursor.fetchone()
+        cursor.close()
+        
+        if not bounty:
+            raise HTTPException(status_code=404, detail="Bounty no encontrado")
+            
+        return {
+            "title": bounty[0],
+            "description": bounty[1],
+            "reward_amount": float(bounty[2]),
+            "status": bounty[3]
+        }
+    except Exception as e:
+        print(f"Error buscando bounty: {e}")
+        raise HTTPException(status_code=500, detail="Error interno")
+
 @app.post("/bounties/vincular")
 def enlazar_bounty_con_premisa(vinculo: VincularBounty):
     exito = db.vincular_bounty_a_nodo(vinculo.bounty_id, vinculo.node_id)
