@@ -14,7 +14,7 @@ def evaluar_sintesis_logica(bounty_title: str, bounty_desc: str, sintesis_text: 
     
     # OBLIGAMOS A GEMINI A HABLAR SOLO EN JSON NATIVO
     model = genai.GenerativeModel(
-        'gemini-1.5-pro',
+        'gemini-1.5-pro-latest',
         generation_config={"response_mime_type": "application/json"}
     )
     
