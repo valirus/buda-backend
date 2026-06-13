@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import bcrypt
 import jwt
+from fastapi.responses import JSONResponse
 from ai_judge import evaluar_sintesis_logica
 from datetime import datetime, timedelta
 
@@ -213,12 +214,15 @@ async def reclamar_recompensa(reclamo: ReclamarBounty, user_id: str = Depends(ve
         sintesis_text=reclamo.synthesis_text
     )
 
-    # Si la IA detecta fraude o un argumento débil, abortamos la transacción financiera
+    # Si la IA detecta fraude o un argumento débil, abortamos la transacción
     if veredicto.get("decision") != "APPROVED":
-        return {
-            "error": "El orquestador autónomo rechazó tu síntesis.",
-            "razon_ia": veredicto.get("reasoning")
-        }
+        return JSONResponse(
+            status_code=400, # <-- AHORA SÍ ES UN RECHAZO OFICIAL
+            content={
+                "error": "El orquestador autónomo rechazó tu síntesis.",
+                "razon_ia": veredicto.get("reasoning")
+            }
+        )
 
     # 3. Si la IA aprueba, procedemos a registrar el nodo en el grafo
     nuevo_node_id = db.crear_interaccion(
