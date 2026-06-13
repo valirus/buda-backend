@@ -32,7 +32,7 @@ def evaluar_sintesis_logica(bounty_title: str, bounty_desc: str, sintesis_text: 
     try:
         # 2. Llamada nativa del nuevo SDK de Google
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.5-flash',
             contents=prompt_sistema,
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
