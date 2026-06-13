@@ -13,8 +13,9 @@ def evaluar_sintesis_logica(bounty_title: str, bounty_desc: str, sintesis_text: 
     inicializar_ia()
     
     # OBLIGAMOS A GEMINI A HABLAR SOLO EN JSON NATIVO
+    # CAMBIAMOS A FLASH: Más rápido, siempre disponible en Free Tier, y sin bloqueos 404.
     model = genai.GenerativeModel(
-        'gemini-1.5-pro-latest',
+        'gemini-1.5-flash',
         generation_config={"response_mime_type": "application/json"}
     )
     
