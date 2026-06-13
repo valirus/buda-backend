@@ -186,9 +186,28 @@ class DatabaseManager:
                     
                 # Filtramos enlaces rotos o huérfanos
                 links = [link for link in record["links"] if link["source"] is not None]
+                nodes = record["nodes"]
                 
+                # --- HIDRATACIÓN DE CAPITAL (Física Alfa) ---
+                self._ensure_pg_connection()
+                cursor = self.pg_conn.cursor()
+                
+                for node in nodes:
+                    total_funds = 0
+                    if node.get("bounties"):
+                        for b_id in node["bounties"]:
+                            cursor.execute("SELECT reward_amount FROM Bounties WHERE bounty_id = %s;", (b_id,))
+                            res = cursor.fetchone()
+                            if res:
+                                total_funds += float(res[0])
+                    # Inyectamos el dinero real directo a la estructura del nodo
+                    node["total_funding"] = total_funds
+                    
+                cursor.close()
+                # --------------------------------------------
+
                 return {
-                    "nodes": record["nodes"],
+                    "nodes": nodes,
                     "links": links
                 }
         except Exception as e:
