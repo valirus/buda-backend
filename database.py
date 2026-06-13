@@ -367,6 +367,33 @@ class DatabaseManager:
             self.pg_conn.rollback() # Si algo falla, nadie pierde dinero
             print(f"Error en el pago del Bounty: {e}")
             return False
+        
+    def obtener_detalles_bounty(self, bounty_id: str):
+        try:
+            self._ensure_pg_connection()
+            cursor = self.pg_conn.cursor()
+            
+            cursor.execute("""
+                SELECT title, description, reward_amount, status 
+                FROM Bounties 
+                WHERE bounty_id = %s;
+            """, (bounty_id,))
+            
+            bounty = cursor.fetchone()
+            cursor.close()
+            
+            if not bounty:
+                return None
+                
+            return {
+                "title": bounty[0],
+                "description": bounty[1],
+                "reward_amount": float(bounty[2]),
+                "status": bounty[3]
+            }
+        except Exception as e:
+            print(f"Error al obtener detalles del bounty en Postgres: {e}")
+            return None
 
 # Instancia global para usar en toda la API
 db = DatabaseManager()
