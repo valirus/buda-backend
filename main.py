@@ -20,7 +20,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # El token dura 1 semana
 # Configuramos CORS para permitir que el frontend hable con el backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"], # <-- CAMBIO CRÍTICO: Apertura de la frontera
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
