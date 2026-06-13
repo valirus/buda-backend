@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import bcrypt
 import jwt
+from ai_judge import evaluar_sintesis_logica
 from datetime import datetime, timedelta
 
 app = FastAPI(title="MVP Anti-Polarización (Proyecto Buda)", version="0.1.0")
@@ -200,14 +201,49 @@ def enlazar_bounty_con_premisa(vinculo: VincularBounty):
 
 @app.post("/bounties/resolver")
 async def reclamar_recompensa(reclamo: ReclamarBounty, user_id: str = Depends(verificar_token)):
-    nuevo_node_id = db.crear_interaccion(user_id=user_id, parent_node_id=reclamo.target_node_id, text=reclamo.synthesis_text, relation_type="SYNTHESIZES")
-    if not nuevo_node_id: return {"error": "El argumento falló."}
+    # 1. Traer los detalles del contrato para que la IA sepa qué está juzgando
+    bounty_details = db.obtener_detalles_bounty(reclamo.bounty_id)
+    if not bounty_details:
+        return {"error": "Contrato no encontrado en los registros financieros."}
+
+    # 2. El Córtex Prefrontal (IA) evalúa la jugada
+    veredicto = evaluar_sintesis_logica(
+        bounty_title=bounty_details["title"],
+        bounty_desc=bounty_details["description"],
+        sintesis_text=reclamo.synthesis_text
+    )
+
+    # Si la IA detecta fraude o un argumento débil, abortamos la transacción financiera
+    if veredicto.get("decision") != "APPROVED":
+        return {
+            "error": "El orquestador autónomo rechazó tu síntesis.",
+            "razon_ia": veredicto.get("reasoning")
+        }
+
+    # 3. Si la IA aprueba, procedemos a registrar el nodo en el grafo
+    nuevo_node_id = db.crear_interaccion(
+        user_id=user_id, 
+        parent_node_id=reclamo.target_node_id, 
+        text=f"{reclamo.synthesis_text}\n\n[VEREDICTO IA: APROBADO - {veredicto.get('reasoning')}]", 
+        relation_type="SYNTHESIZES"
+    )
+    if not nuevo_node_id: 
+        return {"error": "El argumento fue aprobado, pero falló la escritura en la matriz."}
     
-    pago_exitoso = db.resolver_bounty(bounty_id=reclamo.bounty_id, winner_user_id=user_id, synthesis_node_id=nuevo_node_id)
-    if not pago_exitoso: return {"error": "Contrato rechazado."}
+    # 4. Transferimos el dinero
+    pago_exitoso = db.resolver_bounty(
+        bounty_id=reclamo.bounty_id, 
+        winner_user_id=user_id, 
+        synthesis_node_id=nuevo_node_id
+    )
+    if not pago_exitoso: 
+        return {"error": "Error crítico al procesar la transferencia de fondos."}
     
-    await manager.broadcast("UPDATE_MATRIX") # <-- EL GRITO AL FRONTEND
-    return {"status": "CONSENSO ALCANZADO"}
+    await manager.broadcast("UPDATE_MATRIX")
+    return {
+        "status": "CONSENSO ALCANZADO Y FONDOS LIBERADOS",
+        "razon_ia": veredicto.get("reasoning")
+    }
 
 
 @app.post("/auth/register")
