@@ -37,9 +37,24 @@ class DatabaseManager:
             return "Neo4j Conectado."
         except Exception as e:
             return f"Error en Neo4j: {e}"
+        
+    def _ensure_pg_connection(self):
+        # 1. Si no hay conexión o se cerró explícitamente
+        if self.pg_conn is None or self.pg_conn.closed != 0:
+            self.connect_postgres()
+        else:
+            # 2. Hacemos un ping silencioso. Si Neon cortó el cable por inactividad, fallará y reconectamos.
+            try:
+                cur = self.pg_conn.cursor()
+                cur.execute("SELECT 1")
+                cur.close()
+            except Exception:
+                print("Reconectando a PostgreSQL (Cable cortado por inactividad)...")
+                self.connect_postgres()
     
     def registrar_usuario(self, username: str, email: str, password_hash: str):
         try:
+            self._ensure_pg_connection()
             cursor = self.pg_conn.cursor()
             # Usamos el esquema que ya definiste en schema_relacional.sql
             query = """
@@ -58,6 +73,7 @@ class DatabaseManager:
 
     def obtener_usuario_por_username(self, username: str):
         try:
+            self._ensure_pg_connection()
             cursor = self.pg_conn.cursor()
             query = "SELECT user_id, username, password_hash FROM Users WHERE username = %s;"
             cursor.execute(query, (username,))
@@ -74,6 +90,7 @@ class DatabaseManager:
         
     def obtener_stats_usuario(self, user_id: str):
         try:
+            self._ensure_pg_connection()
             cursor = self.pg_conn.cursor()
             query = "SELECT wallet_balance, cognitive_score FROM Users WHERE user_id = %s;"
             cursor.execute(query, (user_id,))
@@ -128,6 +145,7 @@ class DatabaseManager:
         
     def obtener_mapa_debate(self, root_id: str = None, depth: int = 3):
         if not root_id:
+
             # CONSULTA MACRO: Inyectamos la extracción del link empírico
             query = """
             MATCH (n:NodeA)
@@ -230,6 +248,7 @@ class DatabaseManager:
 
     def crear_bounty(self, title: str, description: str, reward_amount: float, deadline: str):
         try:
+            self._ensure_pg_connection()
             # Abrimos el cursor para hablar con PostgreSQL
             cursor = self.pg_conn.cursor()
             
@@ -287,6 +306,7 @@ class DatabaseManager:
         
     def resolver_bounty(self, bounty_id: str, winner_user_id: str, synthesis_node_id: str):
         try:
+            self._ensure_pg_connection()
             cursor = self.pg_conn.cursor()
             
             # 1. Verificamos que el Bounty exista y siga abierto
