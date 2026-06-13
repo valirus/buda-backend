@@ -1,23 +1,16 @@
 import os
 import json
-import google.generativeai as genai
-
-def inicializar_ia():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        print("ADVERTENCIA: GEMINI_API_KEY no encontrada en el entorno.")
-        return
-    genai.configure(api_key=api_key)
+from google import genai
+from google.genai import types
 
 def evaluar_sintesis_logica(bounty_title: str, bounty_desc: str, sintesis_text: str) -> dict:
-    inicializar_ia()
-    
-    # OBLIGAMOS A GEMINI A HABLAR SOLO EN JSON NATIVO
-    # CAMBIAMOS A FLASH: Más rápido, siempre disponible en Free Tier, y sin bloqueos 404.
-    model = genai.GenerativeModel(
-        'gemini-1.5-flash',
-        generation_config={"response_mime_type": "application/json"}
-    )
+    # 1. Cargamos la llave directamente al inicializar el nuevo cliente
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        print("ERROR CRÍTICO: GEMINI_API_KEY no encontrada.")
+        return {"decision": "REJECTED", "reasoning": "El Córtex está desconectado (Falta API Key)."}
+        
+    client = genai.Client(api_key=api_key)
     
     prompt_sistema = f"""
     Actúa como un juez lógico implacable. Se ha ofrecido una recompensa financiera para resolver este problema:
@@ -37,8 +30,14 @@ def evaluar_sintesis_logica(bounty_title: str, bounty_desc: str, sintesis_text: 
     """
     
     try:
-        response = model.generate_content(prompt_sistema)
-        # Como forzamos application/json, ya no hay que limpiar Markdown
+        # 2. Llamada nativa del nuevo SDK de Google
+        response = client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt_sistema,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+            ),
+        )
         return json.loads(response.text)
         
     except Exception as e:
